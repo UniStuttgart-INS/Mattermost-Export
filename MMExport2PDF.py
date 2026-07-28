@@ -221,11 +221,7 @@ def processOptions():
         )
 
         exportgroup = parser.add_argument_group(title="Export Options")
-        exportgroup = parser.add_argument_group(title='Export Options')
-        exportgroup.add_argument("-i", "--images", help="Embed images in PDF", action="store_true", dest="images")
-        exportgroup.add_argument("-f", "--files", help="Embed files in PDF", action="store_true", dest="files")
-        exportgroup.add_argument("-j", "--json", help="Export JSON", action="store_true", dest="json")
-        exportgroup.add_argument("-o", "--output", help="Base output directory", action="store", dest="output", default='./users')
+        _ = exportgroup.add_argument(
             "-i",
             "--images",
             help="Embed images in PDF",
@@ -249,6 +245,30 @@ def processOptions():
             action="store",
             dest="output",
             default="./users",
+        )
+        _ = exportgroup.add_argument(
+            "--font-family-text",
+            help="The font family that should be used for the text",
+            # action="store",
+            type=check_font_is_core_font,
+            dest="font_family_text",
+            default="Helvetica",
+        )
+        _ = exportgroup.add_argument(
+            "--font-family-header-footer",
+            help="The font family that should be used for the header and footer",
+            # action="store",
+            type=check_font_is_core_font,
+            dest="font_family_header_footer",
+            default="Helvetica",
+        )
+        _ = exportgroup.add_argument(
+            "--font-family-title",
+            help="The font family that should be used for the titles",
+            # action="store",
+            type=check_font_is_core_font,
+            dest="font_family_title",
+            default="Helvetica",
         )
 
         options = parser.parse_args()  # uses sys.argv[1:] by default
@@ -298,7 +318,11 @@ def main():
         hitGroupMessages = False
 
         # Initialize PDF
-        pdf = PDF()
+        pdf = PDF(
+            font_family_text=options.font_family_text,
+            font_family_header_footer=options.font_family_header_footer,
+            font_family_title=options.font_family_title,
+        )
         pdf.add_page()
         pdf.set_auto_page_break(True, 15.0)
 
@@ -471,7 +495,7 @@ def main():
                 # pdf.set_fill_color(220, 220, 220)
                 pdf.set_fill_color(255, 165, 0)
                 pdf.set_draw_color(255, 165, 0)
-                _=pdf.cell(
+                _ = pdf.cell(
                     0,
                     5,
                     f"{handleUnicode(userName)} {time} Pinned",
@@ -481,7 +505,7 @@ def main():
                 )
                 pdf.set_fill_color(255, 255, 255)
                 pdf.ln()
-                _=pdf.multi_cell(
+                _ = pdf.multi_cell(
                     0,
                     5,
                     handleUnicode(singleMessage),
@@ -611,10 +635,10 @@ def main():
                                         shutil.copyfileobj(fileObj.raw, f)
 
                                 if myFile.is_file():
-                                    _=pdf.embed_file(
+                                    _ = pdf.embed_file(
                                         myFile, desc=aFile["name"], compress=True
                                     )
-                                    _=pdf.cell(
+                                    _ = pdf.cell(
                                         30,
                                         5,
                                         "Attached file: ",
@@ -623,7 +647,7 @@ def main():
                                         fill=True,
                                     )
                                     pdf.set_text_color(0, 0, 255)
-                                    _=pdf.cell(
+                                    _ = pdf.cell(
                                         0,
                                         5,
                                         f"{aFile['id']}_{aFile['name']}",
@@ -665,6 +689,14 @@ def main():
 ## Helper Functions
 ##
 
+def check_font_is_core_font(font: str) -> str:
+    """Checks if a font is one of the fpdf2 core fonts.
+    
+    Helper function for the argparse type parameter.
+    """
+    if font.lower() in fpdf.fonts.CORE_FONTS:
+        return font
+    raise OptionsException(f"Font {font} is not one of the valid fonts. Valid are: {fpdf.fonts.CORE_FONTS}")
 
 def getUser(userID):
     """
@@ -904,8 +936,17 @@ def handleUnicode(text):
 
 
 class PDF(fpdf.FPDF):
-    def __init__(self):
+    def __init__(
+        self,
+        font_family_text: str,
+        font_family_header_footer: str,
+        font_family_title: str,
+    ):
         super().__init__()
+
+        self._font_family_header_footer: str = font_family_header_footer
+        self._font_family_title: str = font_family_title
+        self._font_family_text: str = font_family_text
 
         # SYSTEM_TTFONTS = "/usr/share/fonts/"
         # self.add_font("NotoSans", style="", fname=os.path.join(SYSTEM_TTFONTS, "noto/NotoSans-Regular.ttf"))
@@ -913,12 +954,12 @@ class PDF(fpdf.FPDF):
         # self.add_font("NotoSans", style="I", fname=os.path.join(SYSTEM_TTFONTS, "noto/NotoSans-Italic.ttf"))
         # self.add_font("NotoSans", style="BI", fname=os.path.join(SYSTEM_TTFONTS, "noto/NotoSans-BoldItalic.ttf"))
 
-        self.set_font(FONT_FAMILY, "", 10)
+        self.set_font(self._font_family_text, "", 10)
 
         self.set_section_title_styles(
             # Level 0 titles:
             level0=fpdf.TextStyle(
-                font_family=FONT_FAMILY_TITLE,
+                font_family=self._font_family_title,
                 font_style="B",
                 font_size_pt=24,
                 color=(0, 0, 0),
@@ -929,7 +970,7 @@ class PDF(fpdf.FPDF):
             ),
             # Level 1 subtitles:
             level1=fpdf.TextStyle(
-                font_family=FONT_FAMILY_TITLE,
+                font_family=self._font_family_title,
                 font_style="B",
                 font_size_pt=20,
                 color=(0, 0, 0),
@@ -940,7 +981,7 @@ class PDF(fpdf.FPDF):
             ),
             # Level 2 subtitles:
             level2=fpdf.TextStyle(
-                font_family=FONT_FAMILY_TITLE,
+                font_family=self._font_family_title,
                 font_style="B",
                 font_size_pt=15,
                 color=(255, 165, 0),
@@ -952,10 +993,10 @@ class PDF(fpdf.FPDF):
         )
 
     def header(self):
-        self.set_font(FONT_FAMILY_HEADER_FOOTER, style="I", size=8)
+        self.set_font(self._font_family_header_footer, style="I", size=8)
 
         if channelDisplayName:
-            self.multi_cell(w=0, text=f"Channel: {channelDisplayName}", align="R")
+            _ = self.multi_cell(w=0, text=f"Channel: {channelDisplayName}", align="R")
 
         # Line break
         self.ln(10)
@@ -963,9 +1004,9 @@ class PDF(fpdf.FPDF):
     def footer(self):
         # Go to 1.5 cm from bottom
         self.set_y(-15)
-        self.set_font(FONT_FAMILY_HEADER_FOOTER, style="I", size=8)
+        self.set_font(self._font_family_header_footer, style="I", size=8)
         # Print centered85 page number
-        self.cell(0, 10, f"Page {self.page_no()}", 0, align="C")
+        _ = self.cell(0, 10, f"Page {self.page_no()}", 0, align="C")
 
 
 def makeJsonFile(username):
