@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """MMExport2PDF
 
@@ -689,14 +688,18 @@ def main():
 ## Helper Functions
 ##
 
+
 def check_font_is_core_font(font: str) -> str:
     """Checks if a font is one of the fpdf2 core fonts.
-    
+
     Helper function for the argparse type parameter.
     """
     if font.lower() in fpdf.fonts.CORE_FONTS:
         return font
-    raise OptionsException(f"Font {font} is not one of the valid fonts. Valid are: {fpdf.fonts.CORE_FONTS}")
+    raise OptionsException(
+        f"Font {font} is not one of the valid fonts. Valid are: {fpdf.fonts.CORE_FONTS}"
+    )
+
 
 def getUser(userID):
     """
