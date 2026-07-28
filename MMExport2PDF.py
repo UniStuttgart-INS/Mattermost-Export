@@ -487,7 +487,6 @@ def main():
                     messagesArray.append(postWithUserName)
 
             print(f"Total Messages: {len(messagesArray) + 1}")
-            print("\n")
 
             if len(pinnedMessages) > 0:
                 pdf.start_section("Pinned Messages", level=2)
@@ -604,7 +603,9 @@ def main():
                                         shutil.copyfileobj(imageObj.raw, f)
 
                                 _ = pdf.image(
-                                    imagePath, w=(pdf.epw * 0.75), alt_text=f"{picture['name']}"
+                                    imagePath,
+                                    w=(pdf.epw * 0.75),
+                                    alt_text=f"{picture['name']}",
                                 )
 
                             except ImageException as ie:
@@ -675,6 +676,7 @@ def main():
 
                     except ImageException as ie:
                         print(ie)
+            print("\n")
 
         pdfOutput = os.path.join(baseUserPath, f"{options.user}.pdf")
 
