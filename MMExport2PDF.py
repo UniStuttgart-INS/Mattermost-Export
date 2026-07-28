@@ -20,8 +20,7 @@ import shutil
 from pathlib import Path
 from typing import Final
 
-# https://py-pdf.github.io/fpdf2/index.html
-import fpdf
+import fpdf  # https://py-pdf.github.io/fpdf2/index.html
 import requests
 import simplejson as json
 
@@ -228,6 +227,12 @@ def processOptions():
             dest="images",
         )
         _ = exportgroup.add_argument(
+            "--no-downscale-images",
+            help="Do not downscale oversized images",
+            action="store_true",
+            dest="no_downscale_images",
+        )
+        _ = exportgroup.add_argument(
             "-f",
             "--files",
             help="Embed files in PDF",
@@ -322,6 +327,8 @@ def main():
             font_family_header_footer=options.font_family_header_footer,
             font_family_title=options.font_family_title,
         )
+        if not options.no_downscale_images:
+            pdf.oversized_images = "DOWNSCALE"
         pdf.add_page()
         pdf.set_auto_page_break(True, 15.0)
 
