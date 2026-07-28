@@ -1,3 +1,6 @@
+# Default path for the generated PDFs
+users/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
