@@ -1,0 +1,48 @@
+{
+    "files.insertFinalNewline": true,
+    "files.watcherExclude": {
+        "**/.venv/**": true,
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/.ruff_cache/**": true,
+    },
+    "files.trimTrailingWhitespace": true,
+    "editor.rulers": [
+        100
+    ],
+    "cSpell.diagnosticLevel": "Hint",
+    "cSpell.language": "en",
+    "cSpell.allowCompoundWords": true,
+    // AutoDocstring extension
+    "autoDocstring.docstringFormat": "numpy-notypes",
+    "autoDocstring.includeExtendedSummary": false,
+    // Better ToDo Tree extension
+    "better-todo-tree.general.statusBar": "top three",
+    "better-todo-tree.general.tags": [
+        "BUG",
+        "HACK",
+        "FIXME",
+        "TODO",
+        "XXX",
+        "[ ]",
+        "[x]"
+    ],
+    "better-todo-tree.tree.scanMode": "workspace only",
+    // ---------------------------------------------------------------------------------------------
+    // Python
+    "python.defaultInterpreterPath": ".venv/bin/python3",
+    // basedpyright
+    "basedpyright.disableOrganizeImports": true,
+    "basedpyright.disableLanguageServices": false,
+    // https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff
+    "ruff.importStrategy": "fromEnvironment",
+    "ruff.organizeImports": true,
+    // General python settings
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+}
