@@ -1,0 +1,26 @@
+[project]
+name = "mattermost-export"
+version = "0.2.0"
+description = """MMExport2PDF
+
+Using the Mattermost API, connects to an instance and exports
+all channel for a user on a team.
+
+Images and Files are downloaded as well.
+
+This is a fork of https://github.com/alallier/Mattermost-Export.
+"""
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fpdf2>=2.8.7",
+    "requests>=2.34.2",
+    "simplejson>=4.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.9",
+    "ruff>=0.16.0",
+    "ty>=0.0.64",
+]
