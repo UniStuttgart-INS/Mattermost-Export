@@ -251,6 +251,14 @@ def processOptions():
             default="./users",
         )
         _ = exportgroup.add_argument(
+            "-n",
+            "--filename",
+            help="Filename of the generated PDF",
+            action="store",
+            dest="filename",
+            default=None,
+        )
+        _ = exportgroup.add_argument(
             "--font-family-text",
             help="The font family that should be used for the text",
             # action="store",
@@ -678,7 +686,10 @@ def main():
                         print(ie)
             print("\n")
 
-        pdfOutput = os.path.join(baseUserPath, f"{options.user}.pdf")
+        if options.filename:
+            pdfOutput = os.path.join(baseUserPath, f"{options.filename}.pdf")
+        else:
+            pdfOutput = os.path.join(baseUserPath, f"{options.user}.pdf")
 
         print(pdfOutput)
         print()
