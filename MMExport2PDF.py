@@ -205,7 +205,7 @@ def processOptions():
         _ = filtergroup.add_argument(
             "-I",
             "--include",
-            help="Only inlcude these channels in the export.",
+            help="Only include these channels in the export.",
             nargs="*",
             dest="include",
             default=[],
@@ -604,7 +604,7 @@ def main():
                                 print(f"Embed Image error: {ie}")
                                 # traceback.print_exc()
                             except Exception as e:
-                                print('Embed Image error: Couldn"t add picture to PDF')
+                                print("Embed Image error: Couldn't add picture to PDF")
                                 print(e)
                                 # traceback.print_exc()
 
@@ -659,7 +659,7 @@ def main():
                                 print(f"Embed File error: {fe}")
                                 # traceback.print_exc()
                             except Exception as e:
-                                print('Embed File error: Couldn"t add file to PDF')
+                                print("Embed File error: Couldn't add file to PDF")
                                 print(e)
                                 # traceback.print_exc()
                             finally:
