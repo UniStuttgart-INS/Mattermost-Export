@@ -592,7 +592,7 @@ def main():
                                 # APPEND FILE ID TO PATH TO MAKE UNIQUE AND CACHE THIS
                                 imagePath = os.path.join(
                                     userPicturesFilePath,
-                                    f"{picture['id']}_{picture['name']}",
+                                    f"{picture['id']}",
                                 )
                                 myImage = Path(imagePath)
 
@@ -603,8 +603,8 @@ def main():
                                         imageObj.raw.decode_content = True
                                         shutil.copyfileobj(imageObj.raw, f)
 
-                                pdf.image(
-                                    imagePath, w=(pdf.epw * 0.75), x=(pdf.epw * 0.75)
+                                _ = pdf.image(
+                                    imagePath, w=(pdf.epw * 0.75), alt_text=f"{picture['name']}"
                                 )
 
                             except ImageException as ie:
