@@ -11,8 +11,10 @@ Images and Files are downloaded as well.
 This is a fork of https://github.com/alallier/Mattermost-Export.
 """
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
+    "emoji>=2.15.0",
+    "fonttools>=4.63.0",
     "fpdf2>=2.8.7",
     "requests>=2.34.2",
     "simplejson>=4.1.1",

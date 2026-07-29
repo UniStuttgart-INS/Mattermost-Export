@@ -11,25 +11,33 @@ This is a fork of https://github.com/alallier/Mattermost-Export.
 """
 
 import argparse
-
-# import ujson as json
+import dataclasses
 import datetime
 import gzip
 import os
+import pathlib
+import platform
 import shutil
 from pathlib import Path
 from typing import Final
 
+import emoji
 import fpdf  # https://py-pdf.github.io/fpdf2/index.html
 import requests
 import simplejson as json
+from fontTools.ttLib import TTCollection, TTFont
 
 __author__ = "Alexander J. Lallier, Clemens Sonnleitner"
 __version__ = "2.0.0"
 __license__ = "MIT"
 
 #########################
-## Globals Variables
+## MARK: Globals constants
+##
+DEFAULT_FONT: Final[str] = "DejaVu Sans"
+
+#########################
+## MARK: Globals Variables
 ##
 
 imageExtenstions = ["gif", "png", "jpeg", "jpg"]
@@ -48,7 +56,7 @@ tableOfContents = {}
 
 
 #########################
-## Exception Definitions
+## MARK: Exception Definitions
 ##
 
 
@@ -98,7 +106,7 @@ class ChannelMembersException(Exception):
 
 
 #########################
-## MMExport2PDF Options
+## MARK: MMExport2PDF Options
 ##
 
 
@@ -213,6 +221,13 @@ def processOptions():
 
         exportgroup = parser.add_argument_group(title="Export Options")
         _ = exportgroup.add_argument(
+            "-sf",
+            "--single-file-per-chat",
+            help="Output a single file per chat/channel",
+            action="store_true",
+            dest="single_file_per_chat",
+        )
+        _ = exportgroup.add_argument(
             "-i",
             "--images",
             help="Embed images in PDF",
@@ -231,6 +246,18 @@ def processOptions():
             help="Embed files in PDF",
             action="store_true",
             dest="files",
+        )
+        _ = exportgroup.add_argument(
+            "--replace-unicode",
+            help="Map all unicode to latin-1. With this flag set, also the build the font management gets easier and also the built in fonts can be used for export",
+            action="store_true",
+            dest="replace_unicode",
+        )
+        _ = exportgroup.add_argument(
+            "--resolve-emoji-aliases",
+            help="Resolve emoji aliases like :thumbs_up:, :+1:, etc.",
+            action="store_true",
+            dest="resolve_emoji_aliases",
         )
         _ = exportgroup.add_argument(
             "-j", "--json", help="Export JSON", action="store_true", dest="json"
@@ -257,7 +284,7 @@ def processOptions():
             # action="store",
             type=check_font_is_core_font,
             dest="font_family_text",
-            default="Helvetica",
+            default=DEFAULT_FONT,
         )
         _ = exportgroup.add_argument(
             "--font-family-header-footer",
@@ -265,7 +292,7 @@ def processOptions():
             # action="store",
             type=check_font_is_core_font,
             dest="font_family_header_footer",
-            default="Helvetica",
+            default=DEFAULT_FONT,
         )
         _ = exportgroup.add_argument(
             "--font-family-title",
@@ -273,10 +300,22 @@ def processOptions():
             # action="store",
             type=check_font_is_core_font,
             dest="font_family_title",
-            default="Helvetica",
+            default=DEFAULT_FONT,
+        )
+        _ = exportgroup.add_argument(
+            "--fallback-fonts",
+            help="Names of extra fallback fonts installed on the system. Useful for e.g. emoji support and CJK characters",
+            nargs="*",
+            dest="fallback_fonts",
+            default=[],
         )
 
         options = parser.parse_args()  # uses sys.argv[1:] by default
+
+        if options.replace_unicode and options.resolve_emoji_aliases:
+            parser.error(
+                "--replace-unicode and --resolve-emoji-aliases cannot be used at the same time"
+            )
 
     except Exception as e:  # pylint: disable=broad-except
         raise OptionsException(e) from e
@@ -285,11 +324,12 @@ def processOptions():
 
 
 #########################
-## Main
+## MARK: Main
 ##
 
 
 def main():
+    # find_system_fonts()
 
     try:
         global baseUserPath
@@ -327,6 +367,8 @@ def main():
             font_family_text=options.font_family_text,
             font_family_header_footer=options.font_family_header_footer,
             font_family_title=options.font_family_title,
+            replace_unicode=options.replace_unicode,
+            fallback_fonts=options.fallback_fonts,
         )
         if not options.no_downscale_images:
             pdf.oversized_images = "DOWNSCALE"
@@ -504,7 +546,13 @@ def main():
                 _ = pdf.cell(
                     0,
                     5,
-                    f"{handleUnicode(userName)} {time} Pinned",
+                    f"{
+                        handleUnicode(
+                            userName,
+                            resolve_emoji_aliases=options.resolve_emoji_aliases,
+                            replace_unicode=options.replace_unicode,
+                        )
+                    } {time} Pinned",
                     0,
                     align="L",
                     fill=True,
@@ -514,7 +562,11 @@ def main():
                 _ = pdf.multi_cell(
                     0,
                     5,
-                    handleUnicode(singleMessage),
+                    handleUnicode(
+                        singleMessage,
+                        resolve_emoji_aliases=options.resolve_emoji_aliases,
+                        replace_unicode=options.replace_unicode,
+                    ),
                     1,
                     align="L",
                     fill=True,
@@ -540,7 +592,13 @@ def main():
                     _ = pdf.cell(
                         0,
                         5,
-                        f"{handleUnicode(userName)} {time} Pinned",
+                        f"{
+                            handleUnicode(
+                                userName,
+                                resolve_emoji_aliases=options.resolve_emoji_aliases,
+                                replace_unicode=options.replace_unicode,
+                            )
+                        } {time} Pinned",
                         0,
                         align="L",
                         fill=True,
@@ -551,7 +609,11 @@ def main():
                     _ = pdf.multi_cell(
                         0,
                         5,
-                        handleUnicode(singleMessage),
+                        handleUnicode(
+                            singleMessage,
+                            resolve_emoji_aliases=options.resolve_emoji_aliases,
+                            replace_unicode=options.replace_unicode,
+                        ),
                         1,
                         align="L",
                         fill=True,
@@ -564,7 +626,13 @@ def main():
                     _ = pdf.cell(
                         0,
                         5,
-                        f"{handleUnicode(userName)} {time}",
+                        f"{
+                            handleUnicode(
+                                userName,
+                                resolve_emoji_aliases=options.resolve_emoji_aliases,
+                                replace_unicode=options.replace_unicode,
+                            )
+                        } {time}",
                         0,
                         align="L",
                         fill=True,
@@ -574,7 +642,11 @@ def main():
                     _ = pdf.multi_cell(
                         0,
                         5,
-                        handleUnicode(singleMessage),
+                        handleUnicode(
+                            singleMessage,
+                            resolve_emoji_aliases=options.resolve_emoji_aliases,
+                            replace_unicode=options.replace_unicode,
+                        ),
                         0,
                         align="L",
                         fill=True,
@@ -698,7 +770,7 @@ def main():
 
 
 #########################
-## Helper Functions
+## MARK: Helper Functions
 ##
 
 
@@ -709,9 +781,130 @@ def check_font_is_core_font(font: str) -> str:
     """
     if font.lower() in fpdf.fonts.CORE_FONTS:
         return font
-    raise OptionsException(
-        f"Font {font} is not one of the valid fonts. Valid are: {fpdf.fonts.CORE_FONTS}"
+
+    print(
+        f"The selected font '{font}' is not one of the PDF standard core fonts. Make sure it is installed on your system."
     )
+    return font
+
+
+@dataclasses.dataclass
+class FontInfo:
+    family: str
+    path: pathlib.Path
+    style: str
+
+
+@dataclasses.dataclass
+class FontCollectionInfo:
+    index: int
+    family: str
+    path: pathlib.Path
+    style: str
+
+
+def find_system_fonts() -> dict[str, list[FontInfo | FontCollectionInfo]]:
+    """Find the system wide installed fonts.
+
+    Should work on Linux, Windows and MacOS.
+    """
+
+    def _get_font_info(path: pathlib.Path) -> FontInfo:
+        font = TTFont(path)
+
+        family = None
+        style = None
+
+        for record in font["name"].names:
+            if record.nameID == 1:  # Font family
+                family = record.toUnicode()
+            elif record.nameID == 2:  # Font style
+                style = record.toUnicode()
+
+        assert family is not None
+        assert style is not None
+
+        return FontInfo(family=family, path=path, style=style)
+
+    def _get_font_collection_info(path: pathlib.Path) -> list[FontCollectionInfo]:
+        font_coll = TTCollection(path)
+
+        font_coll_info = []
+        for i, font in enumerate(font_coll.fonts):
+            family = None
+            subfamily = None
+            for record in font["name"].names:
+                if record.nameID == 1:
+                    family = record.toUnicode()
+                elif record.nameID == 2:
+                    subfamily = record.toUnicode()
+
+            assert family is not None
+            assert subfamily is not None
+
+            font_coll_info.append(
+                FontCollectionInfo(family=family, path=path, style=subfamily, index=i)
+            )
+
+        return font_coll_info
+
+    system = platform.system()
+
+    if system == "Windows":
+        font_roots = [pathlib.Path(r"C:\Windows\Fonts")]
+    elif system == "Darwin":
+        font_roots = [
+            pathlib.Path("/System/Library/Fonts"),
+            pathlib.Path("/Library/Fonts"),
+            pathlib.Path.home() / "Library/Fonts",
+        ]
+    else:
+        font_roots = [
+            pathlib.Path("/usr/share/fonts"),
+            pathlib.Path("/usr/local/share/fonts"),
+            pathlib.Path.home() / ".local/share/fonts",
+        ]
+
+    fonts_paths = []
+    font_collection_paths = []
+    for font_root in font_roots:
+        if font_root.exists():
+            fonts_paths.extend(font_root.rglob("*.ttf"))
+            fonts_paths.extend(font_root.rglob("*.otf"))
+            font_collection_paths.extend(font_root.rglob("*.ttc"))
+
+    fonts = {}
+    for font_path in fonts_paths:
+        font_info = _get_font_info(font_path)
+        if font_info.family in fonts:
+            fonts[font_info.family].append(font_info)
+        else:
+            fonts[font_info.family] = [font_info]
+    for font_collection_path in font_collection_paths:
+        font_collection_info = _get_font_collection_info(font_collection_path)
+        for font_info in font_collection_info:
+            if font_info.family in fonts:
+                fonts[font_info.family].append(font_info)
+            else:
+                fonts[font_info.family] = [font_info]
+
+    return fonts
+
+
+def map_font_style_names(style: str) -> str:
+    """Maps the style names from the ones in TTF files to the required ones for FPDF2.
+
+    Returns
+    -------
+        _description_
+    """
+    style_lower = style.lower()
+    fpdf_str = ""
+    if "bold" in style_lower:
+        fpdf_str += "B"
+    if "italic" in style_lower or "oblique" in style_lower:
+        fpdf_str += "I"
+    return fpdf_str
 
 
 def getUser(userID):
@@ -946,9 +1139,36 @@ def getChannelMembersFn(channel):
     return names
 
 
-def handleUnicode(text):
-    newText = text.encode("latin-1", "replace").decode("latin-1")
-    return newText
+def handleUnicode(
+    text: str, *, resolve_emoji_aliases: bool = False, replace_unicode: bool = False
+) -> str:
+    """Handles unicode strings.
+
+    Parameters
+    ----------
+    text
+        The original text
+    resolve_emoji_aliases
+        Whether emoji aliases like `:+1:`, `:thumps_up:`, … should be resolved.
+    replace_unicode
+        Whether unicode should be replaced by latin-1 encoding.
+
+    Returns
+    -------
+        _description_
+    """
+    if resolve_emoji_aliases and replace_unicode:
+        raise ValueError(
+            "resolve_emoji_aliases and replace_unicode cannot be used at the same time."
+        )
+
+    if replace_unicode:
+        return text.encode("latin-1", "replace").decode("latin-1")
+
+    if resolve_emoji_aliases:
+        return emoji.emojize(text, language="alias")
+
+    return text
 
 
 class PDF(fpdf.FPDF):
@@ -957,25 +1177,48 @@ class PDF(fpdf.FPDF):
         font_family_text: str,
         font_family_header_footer: str,
         font_family_title: str,
+        fallback_fonts: list[str],
+        *,
+        replace_unicode: bool,
     ):
         super().__init__()
 
-        self._font_family_header_footer: str = font_family_header_footer
-        self._font_family_title: str = font_family_title
-        self._font_family_text: str = font_family_text
+        self._font_families = {
+            "text": font_family_text,
+            "header_footer": font_family_header_footer,
+            "title": font_family_title,
+        }
 
-        # SYSTEM_TTFONTS = "/usr/share/fonts/"
-        # self.add_font("NotoSans", style="", fname=os.path.join(SYSTEM_TTFONTS, "noto/NotoSans-Regular.ttf"))
-        # self.add_font("NotoSans", style="B", fname=os.path.join(SYSTEM_TTFONTS, "noto/NotoSans-Bold.ttf"))
-        # self.add_font("NotoSans", style="I", fname=os.path.join(SYSTEM_TTFONTS, "noto/NotoSans-Italic.ttf"))
-        # self.add_font("NotoSans", style="BI", fname=os.path.join(SYSTEM_TTFONTS, "noto/NotoSans-BoldItalic.ttf"))
+        system_fonts = find_system_fonts()
 
-        self.set_font(self._font_family_text, "", 10)
+        # If set font is not a core font load it from system fonts
+        for ff in list(self._font_families.values()) + fallback_fonts:
+            if not ff.lower() in fpdf.fonts.CORE_FONTS:
+                if not ff in system_fonts:
+                    raise OptionsException(
+                        f"Font '{ff}' is neither a core font nor has been found in the system wide installed fonts"
+                    )
+                for fs in system_fonts[ff]:
+                    match fs:
+                        case FontInfo():
+                            self.add_font(
+                                family=fs.family,
+                                style=map_font_style_names(fs.style),
+                                fname=fs.path,
+                            )
+                        case FontCollectionInfo():
+                            self.add_font(
+                                family=fs.family,
+                                style=map_font_style_names(fs.style),
+                                fname=fs.path,
+                                collection_font_number=fs.index,
+                            )
+
+        self.set_font(self._font_families["text"], "", 10)
 
         self.set_section_title_styles(
-            # Level 0 titles:
             level0=fpdf.TextStyle(
-                font_family=self._font_family_title,
+                font_family=self._font_families["title"],
                 font_style="B",
                 font_size_pt=24,
                 color=(0, 0, 0),
@@ -984,9 +1227,8 @@ class PDF(fpdf.FPDF):
                 l_margin=0,
                 b_margin=5,
             ),
-            # Level 1 subtitles:
             level1=fpdf.TextStyle(
-                font_family=self._font_family_title,
+                font_family=self._font_families["title"],
                 font_style="B",
                 font_size_pt=20,
                 color=(0, 0, 0),
@@ -995,9 +1237,8 @@ class PDF(fpdf.FPDF):
                 l_margin=0,
                 b_margin=5,
             ),
-            # Level 2 subtitles:
             level2=fpdf.TextStyle(
-                font_family=self._font_family_title,
+                font_family=self._font_families["title"],
                 font_style="B",
                 font_size_pt=15,
                 color=(255, 165, 0),
@@ -1007,9 +1248,10 @@ class PDF(fpdf.FPDF):
                 b_margin=5,
             ),
         )
+        self.set_fallback_fonts(fallback_fonts, exact_match=False)
 
     def header(self):
-        self.set_font(self._font_family_header_footer, style="I", size=8)
+        self.set_font(self._font_families["header_footer"], style="I", size=8)
 
         if channelDisplayName:
             _ = self.multi_cell(w=0, text=f"Channel: {channelDisplayName}", align="R")
@@ -1020,8 +1262,8 @@ class PDF(fpdf.FPDF):
     def footer(self):
         # Go to 1.5 cm from bottom
         self.set_y(-15)
-        self.set_font(self._font_family_header_footer, style="I", size=8)
-        # Print centered85 page number
+        self.set_font(self._font_families["header_footer"], style="I", size=8)
+        # Print centered page number
         _ = self.cell(0, 10, f"Page {self.page_no()}", 0, align="C")
 
 
