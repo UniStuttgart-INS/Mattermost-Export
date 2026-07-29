@@ -29,13 +29,6 @@ __version__ = "2.0.0"
 __license__ = "MIT"
 
 #########################
-## Config
-##
-FONT_FAMILY: Final[str] = "Helvetica"  # NotoSans,
-FONT_FAMILY_HEADER_FOOTER: Final[str] = "Helvetica"  # Arial
-FONT_FAMILY_TITLE: Final[str] = "Helvetica"  # Times
-
-#########################
 ## Globals Variables
 ##
 
